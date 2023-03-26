@@ -1,0 +1,161 @@
+options nodate pageno=1 linesize=80 pagesize=60;
+data cake;
+input LastName $ 1-12 Age 13-14 PresentScore 16-17 TasteScore 19-20 Flavor $ 23-32 layers 34;
+datalines;
+Orlando     27 93 80  Vanilla    1
+Ramey       32 84 72  Rum        2
+Goldston    46 68 75  Vanilla    1
+Roe         38 79 73  Vanilla    2
+Larsen      23 77 84  Chocolate  .
+Davis       51 86 91  Spice      3
+Strickland  19 82 79  Chocolate  1
+Nguyen      57 77 84  Vanilla    .
+Hildenbrand 33 81 83  Chocolate  1
+Byron       62 72 87  Vanilla    2
+Sanders     26 56 79  Chocolate  1
+Jaeger      43 66 74             1
+Davis       28 69 75  Chocolate  2
+Conrad      69 85 94  Vanilla    1
+Walters     55 67 72  Chocolate  2
+Rossburger  28 78 81  Spice      2
+Matthew     42 81 92  Chocolate  2
+Becker      36 62 83  Spice      2
+Anderson    27 87 85  Chocolate  1
+Merritt     62 73 84  Chocolate  1
+;
+
+data grade;
+   input Name $ 1-8 Gender $ 11 Status $13 Year $ 15-16
+         Section $ 18 Score 20-21 FinalGrade 23-24;
+   datalines;
+Abbott    F 2 97 A 90 87
+Branford  M 1 98 A 92 97
+Crandell  M 2 98 B 81 71
+Dennison  M 1 97 A 85 72
+Edgar     F 1 98 B 89 80
+Faust     M 1 97 B 78 73
+Greeley   F 2 97 A 82 91
+Hart      F 1 98 B 84 80
+Isley     M 2 97 A 88 86
+Jasper    M 1 97 B 91 93
+;
+
+data caketype;
+   input Flavor $ 1-10  Layers 12;
+   datalines;
+Vanilla    1
+Vanilla    2
+Vanilla    3
+Chocolate  1
+Chocolate  2
+Chocolate  3
+;
+
+data charity;
+   input School $ 1-7 Year 9-12 Name $ 14-20 MoneyRaised 22-26
+         HoursVolunteered 28-29;
+   datalines;
+Monroe  2016 Allison 31.65 19
+Monroe  2016 Barry   23.76 16
+Monroe  2016 Candace 21.11  5
+Kennedy 2018 Sid     27.45 25
+Kennedy 2018 Will    28.88 21
+Kennedy 2018 Morty   34.44 25
+;
+
+proc format;
+value $flvrfmt
+	"Chocolate"="Chocolate"
+	"Vanilla"="Vanilla"
+	"Rum", "Spice"="Other Flavor";
+value agefmt (multilabel)
+15 - 29=""below 30 years
+30 - 50='between 30 and 50'
+51 - high='over 50 years'
+15 - 19='15 to 19'
+20 - 25='20 to 25'
+25 - 39='25 to 39'
+40 - 55='40 to 55'
+56 - high='56 and above';
+run;
+
+proc format;
+value layerfmt
+1="single layer"
+2-3="multi-layer"
+.="unknown";
+value $flvrfmt (notsorted)
+"Vanilla"="Vanilla"
+"Orange","Lemon"="Citrus"
+"Spice"="Spice"
+"Rum","Mint","Almond"="Other Flavor"
+;run;
+
+proc means data=grade n mean max min range std fw=8;
+var Score;
+class Status Year;
+title "Summary of Presentation and Taste Scores";
+run;
+
+proc sort data=grade out=grade_sorted;
+by Section;
+run;
+proc means data=grade_sorted min max median;
+by Section;
+var Score;
+class Status Year;
+title1 "Final Exam Scores for Student Status and Year of Graduation";
+title2 "Within Each Section";
+run;
+
+proc means data=cake range median min max fw=7 maxdec=0 classdata=caketype exclusive ;
+var TasteScore;
+class flavor layers;
+title "Taste Score For Number of Layers and Cake Flavor 1";
+run;
+proc means data=cake range median min max fw=7 maxdec=0 classdata=caketype exclusive printalltypes;
+var TasteScore;
+class flavor layers;
+title "Taste Score For Number of Layers and Cake Flavor 2";
+run;
+
+proc means data=cake fw=6 n min max median nonobs;
+class flavor / order=data;
+class age / mlf order=fmt;
+types flavor flavor * age;
+var TasteScore;
+format age agefmt. flavor $flvrfmt.;
+title "Tase Score for Cake Flavors and Participant's Age";
+run;
+
+proc means data=cake fw=7  completetypes missing nonobs;
+class flavor layers / preloadfmt exclusive order=data;
+ways 1 2;
+var TasteScore;
+format layers layerfmt. flavor $flvrfmt.;
+title "Taste Score For Number of Layers and Cake Flavors";
+run;
+
+proc means data=charity fw=8 maxdec=2 alpha=0.1 clm mean std;
+class Year;
+var MoneyRaised HoursVolunteered;
+title "Confidence Limits for Fund Raising Statistics";
+title2 "2016-2018";
+run;
+
+proc means data=Grade ;
+class Status Year;
+var FinalGrade;
+output out=sumstat mean=AverageGrade idgroup (max(score) obs out (name)=BestScore) / ways levels;
+run;
+
+proc means data=Grade  descend;
+class Status Year;
+var Score FinalGrade;
+output out=Sumdata (where=(status="1" or _type_=0)) mean=median(finalgrade)=MedianGrade;
+run;
+proc print data=Sumdata;
+title "Exam and Course Grades for Undergraduates Only";
+title2 "and for ALL Studens";
+run;
+
