@@ -70,7 +70,7 @@ data merge_example;
 run;
 
 
-/* HASH TABLE */
+/* HASH TABLE niekompletne*/
 data hash_example;
 
 	set  B_POLISY;
@@ -87,9 +87,44 @@ data hash_example;
 	rc = h_polisy.find(key:ID_POLISY);
 run;
 
+/* HASH TABLE kompletne*/
+data hash_example;
+
+     set  B_POLISY;
+     length typ_szkody $ 1 data_zdarzenia id_szkody 8.;
+
+    if _n_=1 then do;
+
+         declare hash h_polisy(dataset:"B_SZKODY(rename=(ID = ID_SZKODY ID_POLISY = ID)", multidata: "Y");
+         h_polisy.defineKey("ID");
+         h_polisy.defineData('id_szkody','typ_szkody','data_zdarzenia');
+         h_polisy.defineDone();
+
+     end;
+
+  
+     set B_POLISY;
+     rc = h_polisy.find(key:ID);
+     if (rc = 0) then do;
+
+          output;
+          rc2 = h_polisy.find_next(key: ID);
+          do while (rc2 = 0);
+                output;
+                rc2 = h_polisy.find_next(key: ID);
+          end;
+     end;
+     else do;
+          output;
+
+     end;
+     format data_zdarzenia YYMMDD10.;
+     drop rc rc2;
+run;
 
 proc contents data=B_POLISY order=varnum;run;
 proc contents data=B_SZKODY order=varnum;run;
 proc print data=sql_example;run;
 proc print data=merge_example;run;
 proc print data=hash_example;run;
+
