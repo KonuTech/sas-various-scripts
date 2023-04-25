@@ -1,0 +1,79 @@
+-- A LOOP PRINTING FIRST 10 ROWS FOR EACH DATA SET OBJECT EXCLUDING VIEWS
+%macro loop1(max=10);
+
+
+%let lib=sashelp;
+%local i ds datasets_list;
+
+
+	proc sql noprint;
+	    select distinct memname into :datasets_list separated by " "
+	    from dictionary.tables
+	    where libname = "%upcase(&lib.)" and upcase(memtype) = "DATA";
+	quit;
+
+
+%let num_datasets = %sysfunc(countw(&datasets_list., " "));
+%let max_datasets = &max.;
+%let loop_end = %sysfunc(min(&max_datasets., &num_datasets.));
+
+
+%put ### LIST OF DATASETS ###   : &datasets_list.;
+%put ### NUMBER OF DATASETS ### : &num_datasets.;
+%put ### LOOP END ###           : &loop_end.;
+
+
+%do i=1 %to &loop_end.;
+    %let ds=%sysfunc(scan(&datasets_list., &i.));
+    %put ### DATA SET NAME ### : &ds.;
+	
+	proc print data=&lib..&ds.(obs=10);run;
+	
+%end;
+
+
+%mend loop1;
+
+
+%loop1(max=2);
+
+
+
+-- NESTED DO LOOP WITH RAND()
+
+data ttest;
+call streaminit(13579);
+do subj = 1 to 10;
+	do group = 'A','B';
+		X = round(rand('normal',100,15) + 10*(group = 'B'));
+		output;
+	end;
+end;
+run;
+
+
+-- MERGING WITH A USE OF A LOOP
+
+data procwork.rpok_&dzien0;
+
+    merge rpok.rpok__&dzien0  (in = z1)
+
+		%let i = 1 ;
+		%let item = %scan(&lista.,&i,' ') ;
+		%do %while &item ne;
+			procwork.item&dzien0
+		%let i = 1 +1;
+		%let item = %scan(&lista.,&i,' ') ;
+		%end;
+;
+by id_konto id_subskr dzien0;
+if z1;
+run;
+
+
+-- WAYS TO DECLARE MACRO VARIABLES
+-- %LET statement
+-- macro parameters (named and positional)
+-- iterative %DO statement
+-- using the INTO in PROC SQL
+-- using the CALL SYMPUTX routine
